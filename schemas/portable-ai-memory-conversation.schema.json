@@ -1,0 +1,612 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.portable-ai-memory.org/v1.0/conversation.schema.json",
+  "$comment": "Licensed under the Apache License, Version 2.0. See https://www.apache.org/licenses/LICENSE-2.0",
+  "title": "Portable AI Memory — Normalized Conversation Format",
+  "description": "Normalized conversation format for provider-agnostic storage. This is the target format for all provider importers. Raw provider exports (OpenAI, Anthropic, Google, Microsoft, xAI) are parsed and normalized into this format. Conversations stored in this format are referenced by conversations_index in the main memory-store. This format preserves the full message graph including branching (DAG) from providers like OpenAI.",
+  "type": "object",
+  "required": [
+    "schema",
+    "schema_version",
+    "id",
+    "provider",
+    "temporal",
+    "messages"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "portable-ai-memory-conversation",
+      "description": "Schema identifier."
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(-(rc|alpha|beta)[0-9]*)?$",
+      "description": "Schema version. MUST match the memory-store schema version."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique conversation identifier. SHOULD be UUID v4. This is the id referenced by conversations_index."
+    },
+    "provider": {
+      "$ref": "#/$defs/ProviderInfo",
+      "description": "Source provider information and original identifiers."
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "Human-readable conversation title. Extracted from provider export."
+    },
+    "temporal": {
+      "type": "object",
+      "required": [
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the conversation started."
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "default": null,
+          "description": "When the conversation was last updated."
+        }
+      }
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Participant"
+      },
+      "default": [],
+      "description": "Participants in the conversation. Typically user + assistant, but may include system, tool, etc."
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Message"
+      },
+      "description": "Array of normalized messages. For linear conversations, messages are in chronological order. For branching conversations (e.g., OpenAI), use parent_id and children_ids to reconstruct the DAG."
+    },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "Primary model used in the conversation. May change per-message (see message.model).",
+      "examples": [
+        "gpt-4o",
+        "claude-3-opus-20240229",
+        "gemini-2.0-flash"
+      ]
+    },
+    "system_instruction": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "System prompt or instruction active for this conversation. Extracted from provider when available."
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this conversation was archived by the user in the source platform."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[a-z0-9][a-z0-9_-]*$"
+      },
+      "default": [],
+      "description": "Tags or topics associated with this conversation."
+    },
+    "raw_metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {},
+      "description": "Provider-specific conversation-level metadata preserved verbatim. Use for fields like starred, system_prompt_name, or other provider attributes that don't map to PAM fields. Not interpreted by PAM but available for provider-specific reconstruction."
+    },
+    "import_metadata": {
+      "$ref": "#/$defs/ImportMetadata",
+      "description": "Metadata about the import process."
+    }
+  },
+  "$defs": {
+    "ProviderInfo": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "Source provider information. Preserves original identifiers for traceability.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-z0-9_-]{2,32}$",
+          "description": "Provider identifier. MUST use the same namespace as provenance.platform in the main memory-store schema (Section 11.4). Use product names (chatgpt, claude, gemini, copilot), not company names (openai, anthropic, google, microsoft).",
+          "examples": [
+            "chatgpt",
+            "claude",
+            "gemini",
+            "copilot",
+            "grok"
+          ]
+        },
+        "conversation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Original conversation ID from the provider export."
+        },
+        "account_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "User account ID on the provider platform."
+        },
+        "export_format_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Version or date identifier of the provider export format. Used to select the correct parser.",
+          "examples": [
+            "2025-01-export",
+            "takeout-2024",
+            "v2"
+          ]
+        }
+      }
+    },
+    "Participant": {
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant",
+            "system",
+            "tool"
+          ],
+          "description": "Role in the conversation."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Display name if available."
+        },
+        "provider_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Provider-specific participant identifier."
+        }
+      }
+    },
+    "Message": {
+      "type": "object",
+      "required": [
+        "id",
+        "role",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "description": "A single normalized message. Content may be text, multipart, or empty (for tool calls). For branching conversations, parent_id and children_ids reconstruct the full DAG.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique message ID within this conversation. SHOULD be UUID v4."
+        },
+        "provider_message_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Original message ID from the provider export."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant",
+            "system",
+            "tool"
+          ],
+          "description": "Normalized role. Provider-specific values mapped: human→user, Request→user, AI→assistant, ASSISTANT→assistant. See importer-mappings.md section 6 for full table."
+        },
+        "content": {
+          "$ref": "#/$defs/MessageContent",
+          "description": "Message content. May be simple text or multipart."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Message timestamp. Converted from provider format (Unix epoch for OpenAI, ISO for others)."
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "ID of the parent message in the conversation graph. Enables DAG reconstruction for branching conversations (OpenAI). null for root messages."
+        },
+        "children_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "description": "IDs of child messages. Multiple children indicate conversation branching."
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Specific model that generated this message (for assistant messages)."
+        },
+        "is_thought": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this is an internal thinking/reasoning step (Gemini isThought, Claude extended thinking). Not part of the visible conversation."
+        },
+        "token_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "default": null,
+          "description": "Token count for this message if available from provider."
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attachment"
+          },
+          "default": [],
+          "description": "Files, images, or other attachments on this message."
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "default": [],
+          "description": "Citations or sources referenced by this message."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolCall"
+          },
+          "default": [],
+          "description": "Tool/function calls made by the assistant in this message."
+        },
+        "raw_metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {},
+          "description": "Provider-specific metadata preserved verbatim. Not interpreted by PAM but available for provider-specific reconstruction."
+        }
+      }
+    },
+    "MessageContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Normalized message content. Supports both simple text and multipart content.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "multipart"
+          ],
+          "description": "'text': simple text content in the text field. 'multipart': array of content parts."
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Simple text content. Used when type is 'text'."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContentPart"
+          },
+          "default": [],
+          "description": "Multipart content. Used when type is 'multipart'."
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "ContentPart": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "A single part of multipart content.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "image",
+            "code",
+            "file",
+            "audio",
+            "video"
+          ],
+          "description": "Content part type."
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Text content for text and code parts."
+        },
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Programming language for code parts."
+        },
+        "mime_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "MIME type for binary content parts."
+        },
+        "ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Reference to external file (path, URL, or storage ref)."
+        }
+      }
+    },
+    "Attachment": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "File or media attachment on a message.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "file",
+            "image",
+            "audio",
+            "video",
+            "document"
+          ],
+          "description": "Attachment type."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Original filename."
+        },
+        "mime_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "MIME type of the attachment."
+        },
+        "size_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "default": null,
+          "description": "File size in bytes."
+        },
+        "ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Reference to the stored file."
+        },
+        "provider_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Provider-specific attachment identifier."
+        }
+      }
+    },
+    "Citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A citation or source referenced by a message.",
+      "properties": {
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Title of the cited source."
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "default": null,
+          "description": "URL of the cited source."
+        },
+        "snippet": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Relevant excerpt from the source."
+        }
+      }
+    },
+    "ToolCall": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "A tool or function call made by the assistant.",
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Tool call identifier."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the tool or function called."
+        },
+        "input": {
+          "type": [
+            "object",
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Input parameters passed to the tool."
+        },
+        "output": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Output returned by the tool."
+        }
+      }
+    },
+    "ImportMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Metadata about the import process. Enables debugging and re-import.",
+      "properties": {
+        "importer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "pattern": "^[a-zA-Z0-9_-]+/[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Importer system identifier. Format: 'system/version'.",
+          "examples": [
+            "gines/0.5.0"
+          ]
+        },
+        "importer_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Specific importer module version for this provider.",
+          "examples": [
+            "openai-importer/2025.01",
+            "anthropic-importer/2025.02"
+          ]
+        },
+        "imported_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "default": null,
+          "description": "When this conversation was imported."
+        },
+        "source_file": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Original source file path or identifier."
+        },
+        "source_checksum": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "default": null,
+          "description": "SHA-256 of the original source file for integrity verification."
+        }
+      }
+    }
+  }
+}

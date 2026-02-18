@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.portable-ai-memory.org/v1.0/embeddings.schema.json",
+  "$comment": "Licensed under the Apache License, Version 2.0. See https://www.apache.org/licenses/LICENSE-2.0",
+  "title": "Portable AI Memory — Embeddings File",
+  "description": "Separate embeddings file for the Portable AI Memory interchange format. This file is OPTIONAL. Memory objects reference embeddings via embedding_ref. Embeddings MAY be regenerated from memory content at any time using any model. This file MUST NOT be the sole source of semantic content — the content field in the memory object is always authoritative.",
+  "type": "object",
+  "required": [
+    "schema",
+    "schema_version",
+    "embeddings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "portable-ai-memory-embeddings",
+      "description": "Schema identifier for embeddings file."
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(-(rc|alpha|beta)[0-9]*)?$",
+      "description": "Schema version. MUST match the memory_store schema version."
+    },
+    "embeddings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EmbeddingObject"
+      },
+      "description": "Array of embedding objects."
+    }
+  },
+  "$defs": {
+    "EmbeddingObject": {
+      "type": "object",
+      "required": [
+        "id",
+        "memory_id",
+        "model",
+        "dimensions",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "description": "A single embedding vector associated with a memory object.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for this embedding. Referenced by memory.embedding_ref."
+        },
+        "memory_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ID of the memory object this embedding represents."
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name/identifier of the embedding model used.",
+          "examples": [
+            "text-embedding-3-small",
+            "text-embedding-3-large",
+            "voyage-3",
+            "nomic-embed-text-v1.5"
+          ]
+        },
+        "dimensions": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Dimensionality of the embedding vector."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this embedding was generated."
+        },
+        "vector": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number"
+          },
+          "default": null,
+          "description": "The actual embedding vector. MAY be null if stored externally (see storage)."
+        },
+        "storage": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "default": null,
+          "additionalProperties": false,
+          "description": "External storage reference when vector is not inline.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "file",
+                "database",
+                "object_storage",
+                "vector_db",
+                "uri"
+              ],
+              "description": "Storage backend type."
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Reference to the stored vector."
+            }
+          },
+          "required": [
+            "type",
+            "ref"
+          ]
+        }
+      }
+    }
+  }
+}

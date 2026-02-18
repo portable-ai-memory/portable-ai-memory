@@ -1,0 +1,34 @@
+name: Schema Bug Report
+description: Report a bug in a PAM JSON Schema
+labels: [ "bug", "schema" ]
+body:
+  - type: dropdown
+    id: schema
+    attributes:
+      label: Affected Schema
+      options:
+        - portable-ai-memory.schema.json (memory store)
+        - portable-ai-memory-embeddings.schema.json
+        - portable-ai-memory-conversation.schema.json
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What is wrong with the schema?
+      placeholder: "e.g., The 'confidence.score' field allows values > 1.0 but the spec says it MUST be 0-1"
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Example Input
+      description: JSON that demonstrates the issue (validates when it shouldn't, or fails when it should pass)
+      render: json
+  - type: textarea
+    id: spec-reference
+    attributes:
+      label: Spec Reference
+      description: Which section of spec.md defines the expected behavior?
+      placeholder: "e.g., Section 8.2 - Confidence Score"

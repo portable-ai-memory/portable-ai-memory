@@ -1,0 +1,37 @@
+# .pre-commit-config.yaml
+# PAM Repository — Pre-commit hooks
+#
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+# Run PAM only: pre-commit run pam-validate --all-files
+
+repos:
+  # ── Standard hooks ──────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-json
+        name: JSON syntax check
+        files: \.(json)$
+
+      - id: pretty-format-json
+        name: JSON formatting
+        args: [ --indent, "2", --no-sort-keys, --no-ensure-ascii ]
+        files: \.(json)$
+
+      - id: end-of-file-fixer
+
+      - id: trailing-whitespace
+        args: [ --markdown-linebreak-ext=md ]
+
+  # ── PAM-specific validation ─────────────────────────────
+  - repo: local
+    hooks:
+      - id: pam-validate
+        name: PAM schema & integrity validation
+        entry: python scripts/validate_pam.py
+        language: python
+        always_run: true
+        pass_filenames: false
+        additional_dependencies: [ "jsonschema>=4.21.0", "rfc8785" ]
+        verbose: true

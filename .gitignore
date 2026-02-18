@@ -1,0 +1,21 @@
+# Editors
+.idea/
+.vscode/
+
+# Claude Code
+.claude/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Misc
+*.bak
+*.tmp

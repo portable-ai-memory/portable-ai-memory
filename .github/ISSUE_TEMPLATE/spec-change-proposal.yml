@@ -1,0 +1,40 @@
+name: Spec Change Proposal
+description: Propose a change to the PAM specification
+labels: [ "proposal", "spec" ]
+body:
+  - type: dropdown
+    id: change-type
+    attributes:
+      label: Type of Change
+      options:
+        - New feature / section
+        - Modification to existing section
+        - New memory type
+        - New provider mapping
+        - Clarification / editorial
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief description of the proposed change
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this change needed? What problem does it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Detailed Proposal
+      description: Describe the change in detail, including any new fields, types, or behaviors
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Backward Compatibility
+      description: How does this change affect existing PAM files and implementations?

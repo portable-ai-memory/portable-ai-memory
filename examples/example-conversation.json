@@ -1,0 +1,83 @@
+{
+  "schema": "portable-ai-memory-conversation",
+  "schema_version": "1.0",
+  "id": "conv-001",
+  "provider": {
+    "name": "claude",
+    "conversation_id": "28d595a3-5db0-492d-a49a-af74f13de505",
+    "account_id": "acc-uuid",
+    "export_format_version": "2025.01"
+  },
+  "title": "Initial setup and infrastructure discussion",
+  "temporal": {
+    "created_at": "2024-06-01T10:00:00Z",
+    "updated_at": "2024-06-01T16:00:00Z"
+  },
+  "participants": [
+    {
+      "role": "user",
+      "name": "User"
+    },
+    {
+      "role": "assistant",
+      "name": "Claude"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg-001",
+      "provider_message_id": "uuid-from-claude",
+      "role": "user",
+      "content": {
+        "type": "text",
+        "text": "Preciso configurar a infraestrutura de rede do datacenter com isolamento VLAN e BGP."
+      },
+      "created_at": "2024-06-01T10:00:00Z",
+      "parent_id": null,
+      "children_ids": [
+        "msg-002"
+      ],
+      "model": null,
+      "is_thought": false,
+      "token_count": 18,
+      "attachments": [],
+      "citations": [],
+      "tool_calls": [],
+      "raw_metadata": {}
+    },
+    {
+      "id": "msg-002",
+      "provider_message_id": "uuid-from-claude-2",
+      "role": "assistant",
+      "content": {
+        "type": "text",
+        "text": "Vamos definir a topologia de rede começando pelo isolamento de VLANs por tenant e a configuração BGP para upstream."
+      },
+      "created_at": "2024-06-01T10:01:00Z",
+      "parent_id": "msg-001",
+      "children_ids": [],
+      "model": "claude-3-opus-20240229",
+      "is_thought": false,
+      "token_count": 52,
+      "attachments": [],
+      "citations": [],
+      "tool_calls": [],
+      "raw_metadata": {}
+    }
+  ],
+  "model": "claude-3-opus-20240229",
+  "system_instruction": null,
+  "is_archived": false,
+  "tags": [
+    "infrastructure",
+    "networking",
+    "datacenter"
+  ],
+  "import_metadata": {
+    "importer": "gines/0.5.0",
+    "importer_version": "claude-importer/2025.01",
+    "imported_at": "2026-02-15T22:00:00Z",
+    "source_file": "conversations.json",
+    "source_checksum": "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+  }
+}

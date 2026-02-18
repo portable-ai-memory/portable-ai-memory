@@ -1,0 +1,895 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.portable-ai-memory.org/v1.0/memory-store.schema.json",
+  "$comment": "Licensed under the Apache License, Version 2.0. See https://www.apache.org/licenses/LICENSE-2.0",
+  "title": "Portable AI Memory — Interchange Format",
+  "description": "Universal interchange format for AI user memories. Enables portability of user context, preferences, knowledge, and conversation history across any LLM provider (OpenAI, Anthropic, Google, etc.) without vendor lock-in. This is an INTERCHANGE format, NOT a storage format. Implementations SHOULD use databases internally and MUST support export/import using this format. Embeddings are OPTIONAL and MAY be omitted entirely. When omitted, embedding_ref MUST be null. Consumers MUST NOT fail if embeddings are missing and SHOULD regenerate embeddings from content when needed.",
+  "type": "object",
+  "required": [
+    "schema",
+    "schema_version",
+    "owner",
+    "memories"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "portable-ai-memory",
+      "description": "Schema identifier. MUST be 'portable-ai-memory'."
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(-(rc|alpha|beta)[0-9]*)?$",
+      "description": "Semantic version of the schema. Current: '1.0'.",
+      "examples": [
+        "1.0",
+        "1.0-rc1",
+        "1.1"
+      ]
+    },
+    "spec_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri",
+      "default": null,
+      "description": "URI or URN of the specification version this export conforms to. Implementations MUST NOT require spec_uri to resolve over network. It serves as a version identifier, not a fetchable resource.",
+      "examples": [
+        "https://portable-ai-memory.org/spec/v1.0"
+      ]
+    },
+    "export_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "Unique identifier for this specific export. SHOULD be UUID v4. Enables export tracking, duplicate import detection, and auditability.",
+      "examples": [
+        "e47ac10b-58cc-4372-a567-0e02b2c3d479"
+      ]
+    },
+    "exported_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-zA-Z0-9_-]+/[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Identifier of the system that generated this export. Format: 'system-name/semver'.",
+      "examples": [
+        "gines/0.5.0",
+        "memory-extractor/1.2.3"
+      ]
+    },
+    "export_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when this export was generated."
+    },
+    "owner": {
+      "$ref": "#/$defs/Owner"
+    },
+    "memories": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MemoryObject"
+      },
+      "description": "Array of memory objects. This is the primary payload of the interchange format."
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RelationObject"
+      },
+      "default": [],
+      "description": "Semantic relationships between memory objects, forming a knowledge graph."
+    },
+    "conversations_index": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ConversationIndexEntry"
+      },
+      "default": [],
+      "description": "Lightweight index of conversations. Does NOT contain full message history. Full conversations are stored externally and referenced via storage.ref. Exporters MUST ensure consistency between memory.provenance.conversation_ref and conversation.derived_memories. Importers SHOULD treat derived_memories as advisory and MAY reconstruct from provenance."
+    },
+    "integrity": {
+      "$ref": "#/$defs/IntegrityBlock",
+      "description": "Integrity verification block for the export."
+    },
+    "export_type": {
+      "type": "string",
+      "enum": [
+        "full",
+        "incremental"
+      ],
+      "default": "full",
+      "description": "Export type. 'full': complete memory store. 'incremental': delta since a previous export. When 'incremental', base_export_id and since SHOULD be provided."
+    },
+    "base_export_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "For incremental exports: the export_id of the base export this delta applies to. SHOULD be provided when export_type is 'incremental'."
+    },
+    "since": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "default": null,
+      "description": "For incremental exports: only memories created or updated after this timestamp are included. SHOULD be provided when export_type is 'incremental'."
+    },
+    "type_registry": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri",
+      "default": null,
+      "description": "URI of the official type registry for custom memory types. Enables discovery and standardization of community-defined types. Default registry: https://portable-ai-memory.org/types/",
+      "examples": [
+        "https://portable-ai-memory.org/types/"
+      ]
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureBlock",
+      "description": "Cryptographic signature for authenticity and tamper detection. OPTIONAL but RECOMMENDED for exports shared between systems."
+    }
+  },
+  "if": {
+    "properties": {
+      "signature": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "signature"
+    ]
+  },
+  "then": {
+    "properties": {
+      "export_id": {
+        "type": "string"
+      },
+      "export_date": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "export_id",
+      "export_date"
+    ]
+  },
+  "$defs": {
+    "Owner": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "description": "The individual who owns these memories. Memories are owned by a single person. For cross-platform identity resolution, the did field SHOULD be populated with a W3C Decentralized Identifier.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for the owner. MUST be a UUID v4 or a stable unique identifier that persists across exports. This ensures consistent identity resolution when merging exports from different sources."
+        },
+        "did": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^did:[a-z0-9]+:.+$",
+          "default": null,
+          "description": "W3C Decentralized Identifier (DID) for universal cross-platform identity. Supports any DID method including did:key, did:web, did:ion, did:pkh. See https://www.w3.org/TR/did-core/",
+          "examples": [
+            "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+            "did:web:example.com:user:alice",
+            "did:ion:EiAnKD8..."
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the owner record was first created."
+        }
+      }
+    },
+    "MemoryObject": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "content",
+        "content_hash",
+        "temporal",
+        "provenance"
+      ],
+      "additionalProperties": false,
+      "description": "A single portable memory unit. Represents a fact, preference, skill, or other piece of knowledge about the user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for this memory. SHOULD be a UUID v4."
+        },
+        "type": {
+          "$ref": "#/$defs/MemoryType",
+          "description": "Category of this memory. Determines how consumers should interpret the content."
+        },
+        "custom_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "default": null,
+          "description": "Custom type identifier. REQUIRED when type is 'custom', MUST be null otherwise."
+        },
+        "status": {
+          "$ref": "#/$defs/MemoryStatus",
+          "default": "active",
+          "description": "Lifecycle status of this memory."
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The actual memory content in natural language. This is the primary semantic payload."
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA-256 hash of normalized content for deduplication. Normalization: trim whitespace, lowercase, normalize unicode (NFC), collapse multiple spaces. Format: 'sha256:<hex>'."
+        },
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Optional short summary of the memory content. Useful for display and quick scanning."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "uniqueItems": true,
+          "default": [],
+          "description": "Lowercase tags for categorization and filtering. Pattern: alphanumeric with hyphens and underscores."
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceBlock",
+          "description": "Confidence scoring with temporal decay support."
+        },
+        "temporal": {
+          "$ref": "#/$defs/TemporalBlock",
+          "description": "All time-related properties for this memory."
+        },
+        "provenance": {
+          "$ref": "#/$defs/ProvenanceBlock",
+          "description": "Origin and extraction metadata. Enables auditability and conflict resolution across platforms."
+        },
+        "access": {
+          "$ref": "#/$defs/AccessBlock",
+          "description": "Access control for multi-agent and federation scenarios."
+        },
+        "embedding_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Reference to an embedding in the separate embeddings.json file. MUST be null if embeddings are not included in the export. Importers MUST NOT fail if this is null or if embeddings.json is missing. Importers MAY regenerate embeddings from the content field."
+        },
+        "metadata": {
+          "$ref": "#/$defs/MetadataBlock",
+          "description": "Additional non-semantic metadata."
+        }
+      },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "custom"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "id",
+          "type",
+          "content",
+          "content_hash",
+          "temporal",
+          "provenance",
+          "custom_type"
+        ],
+        "properties": {
+          "custom_type": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "custom_type": {
+            "const": null
+          }
+        }
+      }
+    },
+    "MemoryType": {
+      "type": "string",
+      "enum": [
+        "fact",
+        "preference",
+        "skill",
+        "context",
+        "relationship",
+        "goal",
+        "instruction",
+        "identity",
+        "environment",
+        "project",
+        "custom"
+      ],
+      "description": "Closed taxonomy of memory types. 'fact': objective verifiable information. 'preference': user preference or taste. 'skill': competency or expertise. 'context': situational or temporal context. 'relationship': relation to another entity. 'goal': active objective. 'instruction': how the user wants to be treated. 'identity': personal identity information. 'environment': technical or physical environment. 'project': active project or initiative. 'custom': extensible type requiring custom_type field. Custom types SHOULD be registered at the official type registry (see root type_registry field) for interoperability. Community-adopted custom types MAY be promoted to the standard taxonomy in future versions."
+    },
+    "MemoryStatus": {
+      "type": "string",
+      "enum": [
+        "active",
+        "superseded",
+        "deprecated",
+        "retracted",
+        "archived"
+      ],
+      "description": "'active': current and valid. 'superseded': replaced by a newer memory (see temporal.superseded_by). 'deprecated': still valid but no longer prioritized. 'retracted': explicitly invalidated by user. 'archived': retained for historical purposes only."
+    },
+    "ConfidenceBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "System-computed confidence scoring. NOT user-defined priority.",
+      "properties": {
+        "initial": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Confidence score at time of extraction."
+        },
+        "current": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Current confidence score after decay and reinforcement."
+        },
+        "decay_model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "time_linear",
+            "time_exponential",
+            "none",
+            null
+          ],
+          "default": null,
+          "description": "Model used for confidence decay over time."
+        },
+        "last_reinforced": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "default": null,
+          "description": "Last time this memory was confirmed or reinforced by user interaction."
+        }
+      }
+    },
+    "TemporalBlock": {
+      "type": "object",
+      "required": [
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "description": "Temporal metadata for a memory object.",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this memory was first created/extracted."
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "default": null,
+          "description": "When this memory was last modified."
+        },
+        "valid_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "default": null,
+          "description": "Start of the period during which this memory is/was valid."
+        },
+        "valid_until": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "default": null,
+          "description": "End of validity period. null means still valid."
+        },
+        "superseded_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "ID of the memory that replaces this one. Set when status becomes 'superseded'."
+        }
+      }
+    },
+    "ProvenanceBlock": {
+      "type": "object",
+      "required": [
+        "platform"
+      ],
+      "additionalProperties": false,
+      "description": "Origin tracking for auditability and cross-platform conflict resolution.",
+      "properties": {
+        "platform": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-z0-9_-]{2,32}$",
+          "description": "Source platform identifier. MUST be lowercase ASCII, 2-32 characters, matching ^[a-z0-9_-]{2,32}$. SHOULD be registered in a public registry to prevent collisions.",
+          "examples": [
+            "chatgpt",
+            "claude",
+            "gemini",
+            "grok",
+            "copilot",
+            "perplexity",
+            "local",
+            "manual"
+          ]
+        },
+        "platform_user_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "User identifier on the source platform. Optional for privacy."
+        },
+        "conversation_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Reference to a conversation in conversations_index."
+        },
+        "message_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Reference to a specific message within the conversation."
+        },
+        "extraction_method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "llm_inference",
+            "explicit_user_input",
+            "api_export",
+            "browser_extraction",
+            "manual",
+            null
+          ],
+          "default": null,
+          "description": "How this memory was extracted from the source."
+        },
+        "extracted_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "default": null,
+          "description": "When the extraction was performed."
+        },
+        "extractor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "pattern": "^[a-zA-Z0-9_-]+/[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "System that performed the extraction. Format: 'system-name/semver'."
+        }
+      }
+    },
+    "AccessBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Access control for multi-agent and federated scenarios.",
+      "properties": {
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "private",
+            "shared",
+            "public"
+          ],
+          "default": "private",
+          "description": "'private': owner only. 'shared': accessible to entities in shared_with. 'public': no access restriction."
+        },
+        "exportable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this memory may be included in exports."
+        },
+        "shared_with": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccessGrant"
+          },
+          "default": [],
+          "description": "List of entities with access to this memory."
+        }
+      }
+    },
+    "AccessGrant": {
+      "type": "object",
+      "required": [
+        "entity",
+        "permissions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entity": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the entity granted access (agent ID, system ID, user ID)."
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write",
+              "delete"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Permissions granted to this entity."
+        }
+      }
+    },
+    "MetadataBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Additional metadata. This block allows arbitrary additional properties for extensibility.",
+      "properties": {
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z]{2,3}(-[A-Z][a-z]{3})?(-[A-Z]{2})?$",
+          "default": null,
+          "description": "BCP 47 language tag for the content. Supports language (en), language-region (pt-BR), language-script (zh-Hans), and language-script-region (zh-Hant-TW).",
+          "examples": [
+            "pt-BR",
+            "en",
+            "es-MX"
+          ]
+        },
+        "domain": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Knowledge domain classification.",
+          "examples": [
+            "technical",
+            "personal",
+            "professional",
+            "health",
+            "financial"
+          ]
+        }
+      }
+    },
+    "RelationObject": {
+      "type": "object",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "type",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "description": "A semantic relationship between two memory objects, forming edges in a knowledge graph.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for this relation."
+        },
+        "from": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ID of the source memory object."
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ID of the target memory object."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "supports",
+            "contradicts",
+            "extends",
+            "supersedes",
+            "related_to",
+            "derived_from"
+          ],
+          "description": "'supports': source provides evidence for target. 'contradicts': source conflicts with target. 'extends': source adds detail to target. 'supersedes': source replaces target. 'related_to': general semantic relation. 'derived_from': source was inferred from target."
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": null,
+          "description": "Confidence in this relationship."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this relationship was established."
+        }
+      }
+    },
+    "ConversationIndexEntry": {
+      "type": "object",
+      "required": [
+        "id",
+        "platform",
+        "temporal"
+      ],
+      "additionalProperties": false,
+      "description": "Lightweight index entry for a conversation. Full message history is stored externally. Importers SHOULD treat derived_memories as advisory and MAY reconstruct from memory provenance.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for this conversation."
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-z0-9_-]{2,32}$",
+          "description": "Platform where this conversation occurred. Same namespace as provenance.platform."
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Human-readable title or summary of the conversation."
+        },
+        "message_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "default": null,
+          "description": "Total number of messages in the conversation."
+        },
+        "temporal": {
+          "type": "object",
+          "required": [
+            "created_at"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "created_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the conversation started."
+            },
+            "updated_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time",
+              "default": null,
+              "description": "When the conversation was last updated."
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "default": [],
+          "description": "Tags or topics associated with this conversation. Uses the same field name and pattern as memory tags for consistency."
+        },
+        "derived_memories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "description": "IDs of memories extracted from this conversation. ADVISORY: Exporters MUST ensure consistency with memory.provenance.conversation_ref. Importers MAY reconstruct by scanning provenance."
+        },
+        "storage": {
+          "$ref": "#/$defs/StorageReference",
+          "description": "Reference to the full conversation data."
+        }
+      }
+    },
+    "StorageReference": {
+      "type": "object",
+      "required": [
+        "type",
+        "ref"
+      ],
+      "additionalProperties": false,
+      "description": "Reference to external storage for large data objects.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "file",
+            "database",
+            "object_storage",
+            "vector_db",
+            "uri"
+          ],
+          "description": "Type of storage backend."
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Reference path, URI, or identifier to the stored data."
+        },
+        "format": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Data format of the stored content.",
+          "examples": [
+            "json",
+            "jsonl",
+            "csv",
+            "parquet"
+          ]
+        }
+      }
+    },
+    "SignatureBlock": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "default": null,
+      "additionalProperties": false,
+      "description": "Cryptographic signature over the export for authenticity verification. The signature MUST be computed over a canonicalized payload containing integrity.checksum, export_id, export_date, and owner.id (see spec Section 18.3). Supports Ed25519 (recommended), ECDSA, and RSA algorithms via JWS (RFC 7515) or detached signatures.",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": [
+            "Ed25519",
+            "ES256",
+            "ES384",
+            "RS256",
+            "RS384",
+            "RS512"
+          ],
+          "description": "Signature algorithm. Ed25519 is RECOMMENDED for its speed, small key size, and resistance to side-channel attacks."
+        },
+        "public_key": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Public key of the signer. Format depends on algorithm: Base58 for Ed25519, JWK or PEM for others. If owner.did is present, this key SHOULD correspond to a verification method in the DID document."
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The signature value, Base64url-encoded (RFC 4648 §5). Computed over the RFC 8785 (JCS) canonicalization of the payload object {checksum, export_id, export_date, owner_id} as defined in spec Section 18.3."
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of when the signature was created."
+        },
+        "key_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Optional key identifier. If owner.did is present, this SHOULD be the DID URL of the verification method (e.g., 'did:key:z6Mk...#z6Mk...')."
+        }
+      },
+      "required": [
+        "algorithm",
+        "public_key",
+        "value",
+        "signed_at"
+      ]
+    },
+    "IntegrityBlock": {
+      "type": "object",
+      "required": [
+        "checksum",
+        "total_memories"
+      ],
+      "additionalProperties": false,
+      "description": "Integrity verification block. checksum is the SHA-256 hash of the canonicalized memories array. Default canonicalization is RFC 8785 (JSON Canonicalization Scheme): deterministic JSON serialization with sorted keys, no whitespace, and UTF-8 encoding. Memory objects are sorted by id ascending before canonicalization.",
+      "properties": {
+        "canonicalization": {
+          "type": "string",
+          "enum": [
+            "RFC8785"
+          ],
+          "default": "RFC8785",
+          "description": "Canonicalization algorithm used before hashing. RFC 8785 (JCS - JSON Canonicalization Scheme) is the default and currently only supported method. Ensures deterministic serialization across all implementations regardless of language or platform."
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA-256 of the canonicalized memories array: objects sorted by id ascending, then canonicalized per the specified canonicalization method. Format: 'sha256:<hex>'."
+        },
+        "total_memories": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total count of memory objects. MUST match memories array length."
+        }
+      }
+    }
+  }
+}

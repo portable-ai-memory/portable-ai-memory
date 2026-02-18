@@ -1,0 +1,91 @@
+{
+  "schema": "portable-ai-memory-embeddings",
+  "schema_version": "1.0",
+  "embeddings": [
+    {
+      "id": "emb-001",
+      "memory_id": "mem-001-identity",
+      "model": "example-model-8d",
+      "dimensions": 8,
+      "created_at": "2026-02-15T22:01:00Z",
+      "vector": [
+        0.0123,
+        -0.0456,
+        0.0789,
+        -0.0234,
+        0.0567,
+        -0.0891,
+        0.0345,
+        -0.0678
+      ]
+    },
+    {
+      "id": "emb-002",
+      "memory_id": "mem-002-skill",
+      "model": "example-model-8d",
+      "dimensions": 8,
+      "created_at": "2026-02-15T22:01:00Z",
+      "vector": [
+        0.0234,
+        -0.0567,
+        0.0891,
+        -0.0123,
+        0.0456,
+        -0.0789,
+        0.0678,
+        -0.0345
+      ]
+    },
+    {
+      "id": "emb-003",
+      "memory_id": "mem-003-project",
+      "model": "example-model-8d",
+      "dimensions": 8,
+      "created_at": "2026-02-15T22:01:00Z",
+      "vector": [
+        0.0345,
+        -0.0678,
+        0.0123,
+        -0.0456,
+        0.0789,
+        -0.0234,
+        0.0567,
+        -0.0891
+      ]
+    },
+    {
+      "id": "emb-004",
+      "memory_id": "mem-004-preference",
+      "model": "example-model-8d",
+      "dimensions": 8,
+      "created_at": "2026-02-15T22:01:00Z",
+      "vector": [
+        0.0456,
+        -0.0789,
+        0.0234,
+        -0.0567,
+        0.0891,
+        -0.0123,
+        0.0345,
+        -0.0678
+      ]
+    },
+    {
+      "id": "emb-005",
+      "memory_id": "mem-005-environment",
+      "model": "example-model-8d",
+      "dimensions": 8,
+      "created_at": "2026-02-15T22:01:00Z",
+      "vector": [
+        0.0567,
+        -0.0891,
+        0.0345,
+        -0.0678,
+        0.0123,
+        -0.0456,
+        0.0789,
+        -0.0234
+      ]
+    }
+  ]
+}

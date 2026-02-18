@@ -1,0 +1,39 @@
+# .github/workflows/validate.yml
+# Runs PAM validation on every push and PR.
+
+name: Validate
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - "schemas/**"
+      - "examples/**"
+      - "scripts/validate_pam.py"
+      - "spec.md"
+      - "importer-mappings.md"
+  pull_request:
+    paths:
+      - "schemas/**"
+      - "examples/**"
+      - "scripts/validate_pam.py"
+      - "spec.md"
+      - "importer-mappings.md"
+
+jobs:
+  validate:
+    name: Schema & Integrity
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install "jsonschema>=4.21.0" rfc8785
+
+      - name: Run PAM validator
+        run: python scripts/validate_pam.py --repo-root . -v
