@@ -98,17 +98,42 @@ role normalization tables, and auto-detection heuristics.
 
 | Package              | Language | Repository                                                                          | Status      |
 |----------------------|----------|-------------------------------------------------------------------------------------|-------------|
-| `portable-ai-memory` | Python   | [`portable-ai-memory/python-sdk`](https://github.com/portable-ai-memory/python-sdk) | Coming soon |
+| `portable-ai-memory` | Python   | [`portable-ai-memory/python-sdk`](https://github.com/portable-ai-memory/python-sdk) | Stable (v1.0.0) |
 
-The Python SDK will provide:
+The Python SDK provides:
 
-- **`pam validate`** — validate any file against PAM schemas
+- **`pam validate`** — validate any file against PAM schemas (schema + deep checks)
 - **`pam convert`** — convert provider exports to PAM format (auto-detects provider)
-- **Programmatic API** — `from portable_ai_memory import validate, convert`
+- **`pam inspect`** — summarize PAM file contents (types, counts, metadata)
+- **Programmatic API** — `from portable_ai_memory import load, save, validate, convert`
 
 ## Schema Validation
 
-You can validate a PAM file against the schema using any JSON Schema Draft 2020-12 validator:
+The recommended way to validate PAM files is using the [Python SDK](https://github.com/portable-ai-memory/python-sdk):
+
+```bash
+pip install 'portable-ai-memory[cli]'
+pam validate my-export.json
+```
+
+Or programmatically:
+
+```python
+from portable_ai_memory import load, validate
+
+store = load("my-export.json")
+result = validate(store)
+
+if result.is_valid:
+    print("Valid PAM file")
+else:
+    for issue in result.errors:
+        print(f"✗ {issue}")
+```
+
+The SDK performs both schema validation and deep checks (content hashes, integrity checksums, cross-references, temporal ordering).
+
+You can also validate directly against the JSON Schema using any Draft 2020-12 compliant validator:
 
 ```python
 from jsonschema import Draft202012Validator
